@@ -90,6 +90,8 @@ module mor1kx_dmmu
    reg                                dtlb_protect_we;
    wire [OPTION_OPERAND_WIDTH-1:0]    dtlb_protect_din;
 
+   wire                               dtlb_protect_viol;
+
    wire 			      dmmucr_spr_cs;
    reg 				      dmmucr_spr_cs_r;
    reg [OPTION_OPERAND_WIDTH-1:0]     dmmucr;
@@ -188,9 +190,12 @@ endgenerate
       end
    end
 
-   assign pagefault_o = (supervisor_mode_i ?
+   assign dtlb_protect_viol = (op_store_i || op_load_id) && tlp_protect_dout[virt_addr_i[4:0]];
+
+   assign pagefault_o = ((supervisor_mode_i ?
 			!swe & op_store_i || !sre & op_load_i :
-			!uwe & op_store_i || !ure & op_load_i) &
+			!uwe & op_store_i || !ure & op_load_i)
+			|| dtlb_protect_viol) &
 			!tlb_reload_busy_o;
 
    assign spr_way_idx = {spr_bus_addr_i[10], spr_bus_addr_i[8]};
@@ -242,7 +247,9 @@ endgenerate
    assign dtlb_trans_addr = dtlb_trans_spr_cs ?
 			    spr_bus_addr_i[OPTION_DMMU_SET_WIDTH-1:0] :
 			    virt_addr_i[13+(OPTION_DMMU_SET_WIDTH-1):13];
-   assign dtlb_protect_addr = spr_bus_addr_i[OPTION_DMMU_SET_WIDTH+3-1:0]
+   assign dtlb_protect_addr = dtlb_protect_spr_cs ?
+			      spr_bus_addr_i[OPTION_DMMU_SET_WIDTH+3-1:0] :
+			      virt_addr_i[12:OPTION_DMMU_SET_WIDTH]]
 
    assign dtlb_match_din = dtlb_match_reload_we ? dtlb_match_reload_din :
 			   spr_bus_dat_i;
