@@ -190,7 +190,7 @@ endgenerate
       end
    end
 
-   assign dtlb_protect_viol = (op_store_i || op_load_i) && tlp_protect_dout[virt_addr_i[4:0]];
+   assign dtlb_protect_viol = (op_store_i || op_load_i) && dtlb_protect_dout[virt_addr_i[4:0]];
 
    assign pagefault_o = ((supervisor_mode_i ?
 			!swe & op_store_i || !sre & op_load_i :
