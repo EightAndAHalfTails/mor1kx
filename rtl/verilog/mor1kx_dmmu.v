@@ -190,7 +190,7 @@ endgenerate
       end
    end
 
-   assign dtlb_protect_viol = (op_store_i || op_load_i) && dtlb_protect_dout[virt_addr_i[4:0]];
+   assign dtlb_protect_viol = (op_store_i || op_load_i) && dtlb_protect_dout[virt_addr_i[9:5]];
 
    assign pagefault_o = ((supervisor_mode_i ?
 			!swe & op_store_i || !sre & op_load_i :
@@ -249,7 +249,7 @@ endgenerate
 			    virt_addr_i[13+(OPTION_DMMU_SET_WIDTH-1):13];
    assign dtlb_protect_addr = dtlb_protect_spr_cs ?
 			      spr_bus_addr_i[OPTION_DMMU_SET_WIDTH+3-1:0] :
-			      virt_addr_i[12:OPTION_DMMU_SET_WIDTH];
+			      virt_addr_i[18:10];
 
    assign dtlb_match_din = dtlb_match_reload_we ? dtlb_match_reload_din :
 			   spr_bus_dat_i;
