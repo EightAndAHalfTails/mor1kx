@@ -82,13 +82,6 @@ module mor1kx_dmmu
    reg 				      dtlb_match_spr_cs_r;
    wire 			      dtlb_trans_spr_cs;
    reg 				      dtlb_trans_spr_cs_r;
-   wire 			      dtlb_protect_spr_cs;
-   reg 				      dtlb_protect_spr_cs_r;
-
-   wire [OPTION_OPERAND_WIDTH-1:0]    dtlb_protect_dout;
-   wire [OPTION_DMMU_SET_WIDTH+3-1:0] dtlb_protect_addr;
-   reg                                dtlb_protect_we;
-   wire [OPTION_OPERAND_WIDTH-1:0]    dtlb_protect_din;
 
    wire 			      dmmucr_spr_cs;
    reg 				      dmmucr_spr_cs_r;
@@ -152,8 +145,6 @@ endgenerate
       swe = 0;
       cache_inhibit_o = 0;
 
-      dtlb_protect_we = dtlb_protect_spr_cs & spr_bus_we_i;
-
       for (j = 0; j < OPTION_DMMU_WAYS; j=j+1) begin
          if (way_huge[j] & way_huge_hit[j] | !way_huge[j] & way_hit[j])
             tlb_miss_o = 0;
@@ -199,13 +190,11 @@ endgenerate
      if (rst) begin
 	dtlb_match_spr_cs_r <= 0;
 	dtlb_trans_spr_cs_r <= 0;
-	dtlb_protect_spr_cs_r <= 0;
 	dmmucr_spr_cs_r <= 0;
         spr_way_idx_r <= 0;
      end else begin
 	dtlb_match_spr_cs_r <= dtlb_match_spr_cs;
 	dtlb_trans_spr_cs_r <= dtlb_trans_spr_cs;
-	dtlb_protect_spr_cs_r <= dtlb_protect_spr_cs;
 	dmmucr_spr_cs_r <= dmmucr_spr_cs;
         spr_way_idx_r <= spr_way_idx;
      end
@@ -230,11 +219,9 @@ end
 endgenerate
 
    assign dtlb_match_spr_cs = spr_bus_stb_i & (spr_bus_addr_i[15:11] == 5'd1) &
-                              ^spr_bus_addr_i[10:9] & !spr_bus_addr_i[7];
+                              |spr_bus_addr_i[10:9] & !spr_bus_addr_i[7];
    assign dtlb_trans_spr_cs = spr_bus_stb_i & (spr_bus_addr_i[15:11] == 5'd1) &
-                              ^spr_bus_addr_i[10:9] & spr_bus_addr_i[7];
-   assign dtlb_protect_spr_cs = spr_bus_stb_i & (spr_bus_addr_i[15:11] == 5'd1) &
-                                &spr_bus_addr_i[10:9];
+                              |spr_bus_addr_i[10:9] & spr_bus_addr_i[7];
 
    assign dtlb_match_addr = dtlb_match_spr_cs ?
 			    spr_bus_addr_i[OPTION_DMMU_SET_WIDTH-1:0] :
@@ -242,13 +229,11 @@ endgenerate
    assign dtlb_trans_addr = dtlb_trans_spr_cs ?
 			    spr_bus_addr_i[OPTION_DMMU_SET_WIDTH-1:0] :
 			    virt_addr_i[13+(OPTION_DMMU_SET_WIDTH-1):13];
-   assign dtlb_protect_addr = spr_bus_addr_i[OPTION_DMMU_SET_WIDTH+3-1:0]
 
    assign dtlb_match_din = dtlb_match_reload_we ? dtlb_match_reload_din :
 			   spr_bus_dat_i;
    assign dtlb_trans_din = dtlb_trans_reload_we ? dtlb_trans_reload_din :
 			   spr_bus_dat_i;
-   assign dtlb_protect_din = spr_bus_dat_i;
 
    assign dtlb_match_huge_addr = virt_addr_i[24+(OPTION_DMMU_SET_WIDTH-1):24];
    assign dtlb_trans_huge_addr = virt_addr_i[24+(OPTION_DMMU_SET_WIDTH-1):24];
@@ -256,9 +241,7 @@ endgenerate
    assign dtlb_match_huge_we = dtlb_match_reload_we & tlb_reload_huge;
    assign dtlb_trans_huge_we = dtlb_trans_reload_we & tlb_reload_huge;
 
-
-   assign spr_bus_dat_o = dtlb_protect_spr_cs_r ? dtlb_protect_dout :
-			  dtlb_match_spr_cs_r ? dtlb_match_dout[spr_way_idx_r] :
+   assign spr_bus_dat_o = dtlb_match_spr_cs_r ? dtlb_match_dout[spr_way_idx_r] :
 			  dtlb_trans_spr_cs_r ? dtlb_trans_dout[spr_way_idx_r] :
 			  dmmucr_spr_cs_r ? dmmucr : 0;
 
@@ -464,25 +447,4 @@ for (i = 0; i < OPTION_DMMU_WAYS; i=i+1) begin : dtlb
 end
 endgenerate
 
-generate
-   // DTLB protection registers
-   mor1kx_simple_dpram_sclk
-     #(
-       .ADDR_WIDTH(OPTION_DMMU_SET_WIDTH+3),
-       .DATA_WIDTH(OPTION_OPERAND_WIDTH)
-       )
-   dtlb_protection_regs
-     (
-      // Outputs
-      .dout				(dtlb_protect_dout),
-      // Inputs
-      .clk				(clk),
-      .raddr				(dtlb_protect_addr),
-      .re				(1'b1),
-      .waddr				(dtlb_protect_addr),
-      .we				(dtlb_protect_we),
-      .din				(dtlb_protect_din)
-      );
-endgenerate
-   
 endmodule // mor1kx_dmmu
