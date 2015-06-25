@@ -1,0 +1,32 @@
+\chapter{Introduction}
+Computers today have access to large amounts of our personal data. It can often have disastrous effects on our personal and professional lives if the data is compromised. The problem with leaving security issues to software developers is that often multiple processes will be running on the same system, with a shared memory area, and a vulnerability in any one of the processes can potentially leak sensitive data, regardless of how secure the others are.
+
+It is sometimes preferable to place security measures at the lower levels of execution, i.e. the hardware, kernel or operating system (OS). This restricts system security to a single point-of-failure, and can result in easier, faster, and more secure code.
+
+\section{Motivation}
+A \textbf{Buffer Overflow Attack} makes use of out-of-range array accesses to read or write memory locations intended to be inaccessible. They are typically associated with C and C++, which provide no built-in protection against array accesses falling outside the bounds of the array. Using a Buffer Overflow Attack, an attacker could, for example, corrupt the return address inside a function to point to and thus run arbitrary code.
+
+The Heartbleed bug in OpenSSL\cite{heartbleed} was an example of a vulnerability to this type of attack. An attacker was able to send a server a payload text string along with its length and have the server reply with the exact same payload. However, if the length supplied was longer than the actual length of the payload, the returned message would be appended with whatever followed the text string in memory.\footnote{\url{http://xkcd.com/1354/}} This potentially allowed an attacker access to server private keys, user passwords, or really anything stored on the server's memory.
+
+\section{Existing Solutions}
+A potential solution would be to use other programming languages or the Standard Template Library container classes in C++, but for those who cannot afford the performance cut, there exist other protection strategies. For example, the use of \textbf{canary values} involves placing a known value after the buffer. Since buffer overflows are often carried out with such C functions as \verb|strcpy|, they affect contiguous memory areas. A write would therefore alter the canary value, and thus the program can infer that a buffer overflow has occurred and can, for example, invalidate the memory area as a countermeasure.
+
+The above solution works for writes, which corrupt the canary value, but would offer no protection against out-of-bounds reads, such as those making use of the Heartbleed vulnerability. Fortunately, the same idea can be extended to protect against both types of attack, though at significant cost, as will be explained.
+
+\section{Project Aims}
+One could imagine a system making use of the Memory Management Unit (MMU), whereby a buffer would be placed immediately before a page boundary, and the following page marked as invalid in the MMU. A buffer overflow, whether a read or a write, would then trigger a page fault, which could potentially allow the OS to resolve the situation.
+
+The biggest downside to this method is that it requires an entire virtual memory page be invalidated. On x86 processors, for example, this is 4KiB. It would be nice to have a smaller invalidatable section of memory in the MMU to use for this purpose.
+
+This project investigates a method to allow the invalidation of smaller memory sections within the MMU, specifically by adding hardware registers to allow for memory invalidation at the cache block level; in x86 the cache block size is 64B. This allows use of the above protection system without excess wasted memory, however it adds extra silicon in the form of the hardware registers. This tradeoff is also examined during the project.
+
+In addition, a small amount of code is written to both test the new hardware and demonstrate how firmware or software might make use of it.
+
+\section{Report Outline}
+This report is made up of 4 chapters:
+
+Chapter~\ref{cha:res} summarises the various processors that could be chosen on which to base the project, followed by the choice made and justifications.
+
+Chapter~\ref{cha:imp} gives an account of the work done during the project, starting with setting up the processor to obtain a development environment, and going on to describe the hardware changes made and code written.
+
+Chapter~\ref{cha:results} describes the testing done and obtains figures for the area and frequency impact of the new hardware, followed by an analysis of what these figures mean in terms of the consequences of the new hardware on the design as a whole.

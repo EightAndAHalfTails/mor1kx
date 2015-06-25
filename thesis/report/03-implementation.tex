@@ -1,0 +1,367 @@
+\chapter{Implementation}
+\label{cha:imp}
+
+This chapter gives an account of the work done during the project. As described in Chapter~\ref{cha:res}, the OpenRISC (\textbf{or1k}) was chosen as the target processor architecture. To allow for repeated instantiations and modifications of this hardware design, a Field Programmable Gate Array (FPGA) development board was used. Initially the Altera SoCKit\cite{sockit} was chosen as the target device. However, even after extensive modifications, a working build was not obtained. The details of the attempt will nonetheless be detailed both as a record of work done and to advise future attempts.
+
+Following this attempt, an Altera DE2 board\cite{de2} was used. This target device proved successful, and the hardware modifications and code written that are detailed in the following sections were run on this board (although in theory, the code is device-agnostic).
+
+\section{SoCKit}
+\label{sec:sockit}
+The initial project aim was to use the Altera SoCKit to instantiate and test the hardware.  This section details the (ultimately unsuccessful) attempt to get it working.
+
+\subsection{Building}
+The first step was to build the OpenRISC processor and program it onto the board. For this a tool called \textbf{FuseSoC}\cite{fusesoc} (formerly \textbf{OrpSoCv3}) was used. FuseSoC's readme describes it as a ``package manager and a set of build tools for HDL [Hardware Description Language] code.'' Using this, it is simple\footnote{In theory.} to build \textbf{mor1kx} (the OpenRISC implementation in question) for the SoCKit with the command \texttt{fusesoc build sockit}. This command invokes the relevant Quartus executables to build a netlist to be programmed.
+
+However, the build did not work at first. A lot of searching revealed the problem to be a bug in FuseSoC's libraries. As shown below, the port names between two files did not agree. Patching this error allowed the build to continue.\footnote{Unfortunately for me, by the time I thought to submit a bug report or a pull request upstream, the bug had already been found and patched by the developers.}
+
+Figure~\ref{fig:wb_dec} gives the declaration of the \verb|avalon_to_wb_bridge| module. If this is compared to an instantiation of that module, such as the one given in Figure~\ref{fig:wb_inst}, it can be seen that several port names are incorrect. This is likely due to the former file being changed without proper care being taken to update port names throughout the code.
+
+Once the build succeeded, it could be programmed onto the board using the command \texttt{fusesoc pgm sockit}.
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language=Verilog]
+module avalon_to_wb_bridge \#(
+	parameter DW = 32,	// Data width
+	parameter AW = 32	// Address width
+)(
+	input 		  wb_clk_i,
+	input 		  wb_rst_i,
+	// Avalon Slave input
+	input [AW-1:0] 	  s_av_address_i,
+	input [DW/8-1:0]  s_av_byteenable_i,
+	input 		  s_av_read_i,
+	output [DW-1:0]   s_av_readdata_o,
+	input [7:0] 	  s_av_burstcount_i,
+	input 		  s_av_write_i,
+	input [DW-1:0] 	  s_av_writedata_i,
+	output 		  s_av_waitrequest_o,
+	output 		  s_av_readdatavalid_o,
+	// Wishbone Master Output
+	output [AW-1:0]   wbm_adr_o,
+	output [DW-1:0]   wbm_dat_o,
+	output [DW/8-1:0] wbm_sel_o,
+	output 		  wbm_we_o,
+	output 		  wbm_cyc_o,
+	output 		  wbm_stb_o,
+	output [2:0] 	  wbm_cti_o,
+	output [1:0] 	  wbm_bte_o,
+	input [DW-1:0] 	  wbm_dat_i,
+	input 		  wbm_ack_i,
+	input 		  wbm_err_i,
+	input 		  wbm_rty_i
+);
+  \end{lstlisting}
+  \caption{The declaration of the avalon\_to\_wb\_bridge module\cite{wb_dec}}
+  \label{fig:wb_dec}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language=Verilog]
+wb_to_avalon_bridge #(
+	.DW			(32),
+	.AW			(32),
+	.BURST_SUPPORT		(1)
+) hps_ddr3_wb2avl_bridge (
+	.wb_clk_i		(wb_clk),
+	.wb_rst_i		(wb_rst),
+	// Wishbone Slave Input
+	.wb_adr_i		(wb_m2s_hps_ddr3_adr),
+	.wb_dat_i		(wb_m2s_hps_ddr3_dat),
+	.wb_sel_i		(wb_m2s_hps_ddr3_sel),
+	.wb_we_i		(wb_m2s_hps_ddr3_we),
+	.wb_cyc_i		(wb_m2s_hps_ddr3_cyc),
+	.wb_stb_i		(wb_m2s_hps_ddr3_stb),
+	.wb_cti_i		(wb_m2s_hps_ddr3_cti),
+	.wb_bte_i		(wb_m2s_hps_ddr3_bte),
+	.wb_dat_o		(wb_s2m_hps_ddr3_dat),
+	.wb_ack_o		(wb_s2m_hps_ddr3_ack),
+	.wb_err_o		(wb_s2m_hps_ddr3_err),
+	.wb_rty_o		(wb_s2m_hps_ddr3_rty),
+	// Avalon Master Output
+	.m_av_address_o		(avm_hps_ddr3_address),
+	.m_av_byteenable_o	(hps_0_f2h_sdram0_data_byteenable),
+	.m_av_read_o		(hps_0_f2h_sdram0_data_read),
+	.m_av_readdata_i	(hps_0_f2h_sdram0_data_readdata),
+	.m_av_burstcount_o	(hps_0_f2h_sdram0_data_burstcount),
+	.m_av_write_o		(hps_0_f2h_sdram0_data_write),
+	.m_av_writedata_o	(hps_0_f2h_sdram0_data_writedata),
+	.m_av_waitrequest_i	(hps_0_f2h_sdram0_data_waitrequest),
+	.m_av_readdatavalid_i	(hps_0_f2h_sdram0_data_readdatavalid)
+);
+  \end{lstlisting}
+  \caption{An example attempt to instantiate the avalon\_to\_wb\_bridge module\cite{wb_inst}}
+  \label{fig:wb_inst}
+\end{figure}
+
+\subsection{Running}
+After the processor was built and the board programmed, the next step was to load an object file onto the processor. For this a Linux image was used, compiled using the \texttt{or1k-elf-gcc} toolchain as detailed on the OpenCores website\cite{or1k-linux}. The resulting object file was simulated under the toolchain's simulator and found to run as expected.
+
+To debug the running processor, including loading object files, the \textbf{Open On-chip Debugger} (\textbf{OpenOCD}) was used as detailed, once again, on the OpenCores website\cite{or1k-openocd}.
+
+However, running OpenOCD for the SoCKit gave an error regarding mismatched clock speeds. Some searching revealed a discussion board\cite{openocd-sockit} where the error was mentioned, which pointed to a patch for the issue\cite{openocd-fix}.
+
+Compiling a version of OpenOCD with this patch applied seemed to get around the issue, but unfortunately it would still not run.\footnote{At time of writing, I've long since forgotten the exact issue, if indeed I ever worked out what it was. Let this be a lesson to write this kind of thing down somewhere.} After a meeting between the Author and Supervisor, it was decided to scrap the SoCKit route and work with the DE2 board, which had been used successfully in a previous project.
+
+\section{DE2}
+This section details the work done in setting up a development environment for the DE2 board. These steps were largely similar to those taken in Section~\ref{sec:sockit}.
+
+\subsection{Building}
+Once again, Fusesoc was used to build the processor. Appropriate configuration files were provided from a previous project by the project supervisor.
+
+Support for the Cyclone II FPGA, as is used in the DE2, has been discontinued in later versions of Quartus, so version 13.0 needed to be installed for the build to work.
+
+After moving the DE2 files to the appropriate Fusesoc directory, \texttt{fusesoc build de2} and \texttt{fusesoc pgm de2} worked as expected.
+
+\subsection{Running}
+Running OpenOCD proved far more successful this time, though in place of a Linux image, a Hello World program provided from the previous DE2 project was used.
+
+\section{Hardware}
+\label{sec:har}
+With a development environment finally obtained, the actual aim of the project could be implemented: the addition of hardware registers and logic to allow for invalidation of virtual memory of cache block size within the Data MMU (DMMU).
+
+The first step was to add the new registers. The processor implementation being used was \textbf{mor1kx}\cite{mor1kx}. This implementation was configured to have a cache block size of 32B, and a DMMU page size of 8kB. This results in $\frac{8kB}{32B} = 256$ cache lines (and therefore invalidation bits required) per page.
+
+In addition, the DMMU has 1 way and 64 sets. With 64 potential pages in the DMMU, this results in a grand total of $64 \times 256 = 16384$ extra bits. Since the mor1kx word size is 32 bits, this could be achieved with the addition of $\frac{16384}{32} = 512$ extra 32-bit Special Purpose Registers (SPRs).
+
+SPRs are a feature of the or1k architecture which are generally used to hold configurations and data specific to a unit within the processor. For example, the Translation Lookaside Buffer (TLB) within the DMMU is implemented as a series of ``match'' and ``translate'' SPRs. SPRs are accessible to software via the supervisor-mode instructions \texttt{mtspr} and \texttt{mfspr} (move to\slash from SPR).
+
+Each unit has a ``group'' of 2048 SPR addresses allocated to it, and fortunately the last 512 addresses in the DMMU group were unused, allowing their allocation for the purposes of this project.
+
+Figure~\ref{fig:regs_inst} shows the instantiation of the new registers. Although the address width was given in terms of the set width\footnote{6 bits for 64 sets, +8 for 256 bits per page, -5 for the 32 bits in each SPR}, increasing the number of sets or ways in the DMMU now would cause the addresses of the new registers to overflow their allocated address space. Therefore, the DMMU size should henceforth be considered unconfigurable.
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language=Verilog]
+generate
+   // DTLB invalidation registers
+   mor1kx_simple_dpram_sclk
+     #(
+       .ADDR_WIDTH(OPTION_DMMU_SET_WIDTH+3),
+       .DATA_WIDTH(OPTION_OPERAND_WIDTH)
+       )
+   dtlb_invalidation_regs
+     (
+      // Outputs
+      .dout				(dtlb_inval_dout),
+      // Inputs
+      .clk				(clk),
+      .raddr				(dtlb_inval_addr),
+      .re				(1'b1),
+      .waddr				(dtlb_inval_addr),
+      .we				(dtlb_inval_we),
+      .din				(dtlb_inval_din)
+      );
+endgenerate
+  \end{lstlisting}
+  \caption{The code instantiating the new registers in the DMMU}
+  \label{fig:regs_inst}
+\end{figure}
+
+The next step was to add logic allowing the registers to be accessed. There are two ways this might occur:
+\begin{itemize}
+	\item The \texttt{mtspr} and \texttt{mfspr} instructions allow the CPU to write to or read from the registers directly.
+	\item Any address translation should first check to see if the appropriate invalidation bit is set, and if so trigger a page fault.
+\end{itemize}
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language=Verilog]
+   always @(*) begin
+      // Snip block initialisations
+      dtlb_inval_we = dtlb_inval_spr_cs & spr_bus_we_i;
+      // Snip other write-enable signals
+   end
+
+   assign dtlb_match_spr_cs = spr_bus_stb_i
+                            & (spr_bus_addr_i[15:11] == 5'd1)
+                            & ^spr_bus_addr_i[10:9] & !spr_bus_addr_i[7];
+   assign dtlb_trans_spr_cs = spr_bus_stb_i
+                            & (spr_bus_addr_i[15:11] == 5'd1)
+                            & ^spr_bus_addr_i[10:9] & spr_bus_addr_i[7];
+   assign dtlb_inval_spr_cs = spr_bus_stb_i
+                              & (spr_bus_addr_i[15:11] == 5'd1)
+                              & &spr_bus_addr_i[10:9];
+
+   assign dtlb_match_addr = dtlb_match_spr_cs ?
+			    spr_bus_addr_i[OPTION_DMMU_SET_WIDTH-1:0] :
+			    virt_addr_i[13+(OPTION_DMMU_SET_WIDTH-1):13];
+   assign dtlb_trans_addr = dtlb_trans_spr_cs ?
+			    spr_bus_addr_i[OPTION_DMMU_SET_WIDTH-1:0] :
+			    virt_addr_i[13+(OPTION_DMMU_SET_WIDTH-1):13];
+   assign dtlb_inval_addr = dtlb_inval_spr_cs ?
+			      spr_bus_addr_i[OPTION_DMMU_SET_WIDTH+3-1:0] :
+			      virt_addr_i[18:10];
+
+   assign dtlb_match_din = dtlb_match_reload_we ? dtlb_match_reload_din :
+			   spr_bus_dat_i;
+   assign dtlb_trans_din = dtlb_trans_reload_we ? dtlb_trans_reload_din :
+			   spr_bus_dat_i;
+   assign dtlb_inval_din = spr_bus_dat_i;
+   
+   // Snip area translate buffer signals
+   
+   assign spr_bus_dat_o =
+         dtlb_inval_spr_cs_r ? dtlb_inval_dout :
+         dtlb_match_spr_cs_r ? dtlb_match_dout[spr_way_idx_r] :
+         dtlb_trans_spr_cs_r ? dtlb_trans_dout[spr_way_idx_r] :
+         dmmucr_spr_cs_r ? dmmucr : 0;
+  \end{lstlisting}
+  \caption{New logic signals to present the new registers to the SPR bus.}
+  \label{fig:spr_logic}
+\end{figure}
+
+The \texttt{mtspr} and \texttt{mfspr} instructions take as argument a 16-bit SPR address; the first 5 bits encode the group number, and the last 11 bits the register number within that group. The DMMU SPRs belong to group 1, and we are looking for the last 512 registers\footnote{i.e. register numbers 1536 to 2047}. Therefore, we are looking for an address of the format \texttt{0b0000 111x xxxx xxxx}.
+
+Within the DMMU, all signals relating to these instructions are provided via the SPR bus, and it is via this bus that pertinent data must be sent back to the other sections of the CPU.
+
+Figure~\ref{fig:spr_logic} shows the preexisting code for the match and translate registers, alongside the new code added for the new registers. The \verb|_spr_cs| signals indicate whether an incoming SPR address falls into one of the named SPRs.\footnote{i.e. \texttt{dtlb\_match\_spr\_cs} is asserted if the SPR address points to a match register in the DTLB.} If this signal is asserted, then the register address within the RAM block is taken from the lower 9 bits of the SPR address.
+
+Since the software is going to be in charge of invalidating memory, the registers will only ever be written by an \texttt{mtspr} instruction. Therefore the RAM's input data bus reads directly from the data-in field of the SPR bus, and the write enable signal is asserted on an \texttt{mtspr} instruction.
+
+Finally, the data from the RAM is returned to the SPR bus. The \verb|_spr_cs_r| signals are the \verb|_spr_cs| delayed by one cycle to align with the read cycle. When these are asserted, the appropriate RAM block is selected to read the output from.
+
+Next comes the logic to read the appropriate bit during an address translation. When a virtual address comes in, the logic needs to extract the word and bit address to return the correct bit in the RAM. The virtual address should be decoded as follows:
+
+The lower 5 bits \texttt{[4:0]} refer to the word inside the cache block and should be ignored. Bits \texttt{[12:5]} give the 8-bit index into the 256 bits allocated to each page. Bits \texttt{[18:13]} give the 6-bit set index.
+
+In other words, the 14 bits \texttt{[18:5]} give the bit index within the RAM. Of these, the 9 upper bits \texttt{[18:10]} index one of the 512 registers, while the lower 5 \texttt{[9:5]} index the bit within the register.
+
+Figure~\ref{fig:pgf_logic} shows the lines edited. A new signal was created to indicate when a load or store operation attempts to access invalid memory, then this signal is used alongside the existing access code violations as a condition for the page fault signal.
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language=Verilog]
+   assign dtlb_inval_access = (op_store_i || op_load_i)
+                              && dtlb_inval_dout[virt_addr_i[9:5]];
+
+   assign pagefault_o = ((supervisor_mode_i ?
+			!swe & op_store_i || !sre & op_load_i :
+			!uwe & op_store_i || !ure & op_load_i)
+			|| dtlb_inval_access) &
+			!tlb_reload_busy_o;
+  \end{lstlisting}
+  \caption{New logic signals to check for invalidated memory during address translation.}
+  \label{fig:pgf_logic}
+\end{figure}
+
+\section{Software}
+On the software side, two programs were needed, one to test the MMU of the base implementation, and one to test the new added features of Section~\ref{sec:har}.
+
+\subsection{Before Hardware Modification}
+For the first program, the first step was to write the exception handlers, specifically the reset handler that gets called whenever the processor is reset or turned on, and the Data TLB (DTLB) miss exception handler that occurs whenever a Page Table Entry (PTE) needs to be loaded into the DTLB.
+
+The exception handlers are shown in Figure~\ref{fig:exh}. The reset handler initialises register 0 to a contain a value of 0, as is required by the or1k specification, then sets up registers 1 and 2, the stack and frame pointers respectively. It then jumps to the start of the program.
+
+The DTLB miss exception handler is responsible for loading PTEs into the DTLB. In normal operation this would involve doing a page walk over the Page Table (PT). However, for this project it was not necessary to emulate this behaviour. A PT was not used, and instead the handler simply creates a PTE corresponding to the identity transformation\footnote{i.e. Virtual Address = Physical Address} on the fly.
+
+To set up the relevant entries in the DTLB, the exception handler must fill the match register in the appropriate set with the Virtual Page Number (VPN), and fill the corresponding translate register with the Physical Page Number (PPN). In addition, the match register requires bit 0 to be set to be valid, and the translate register has several protection bits saying whether the corresponding page can be read or written in supervisor or user mode. For the purposes of this test program, these can all be enabled.
+
+In Figure~\ref{fig:exh}, the exception handler first obtains the Effective Address\footnote{For all intents and purposes, this is identical to a virtual address, but the or1k specification distinguishes between them} (EA) whose translation triggered the exception. The page number of this address is made up of the top 19 bits, so the bottom 13 bits are cleared. The set number is found by taking bits 18 to 13 of the EA. The result is then used as an offset for the \texttt{mtspr} instruction, which takes a register value and ORs it with an immediate to obtain the SPR address.
+
+After the exception handlers, the main program was written. All this had to do was store some data in memory, then activate the DMMU and attempt to retrieve the data. Figure~\ref{fig:mn1} shows the code written to do this. The DMMU is enabled by setting bit 5 of an SPR called the Status Register (SR). The test value is loaded into register 15, and by checking the contents of this register with OpenOCD, it can be confirmed that the program worked as expected.
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language={[x86masm]Assembler}]
+	.global _start
+	.org 0x100
+reset:
+	l.andi	r0, r0,	0
+	l.movhi	r1, hi(_stack)
+	l.ori	r1, r1, lo(_start)
+	l.or	r2, r0, r1
+	
+	l.j	_start
+	l.nop
+
+	.org 0x900
+dtlbms:
+# virt = phys
+	l.mfspr	r23, r0, 0x30		# r23 = EA
+	l.movhi	r25, 0xffff
+	l.ori	r25, r25, 0xe000	# r25 = 0xfffe000
+	l.and	r25, r25, r23		# r25 = EA[31:13] = VPN/PPN
+
+	l.movhi	r27, 0x0007
+	l.ori	r27, r27, 0xe000	# r27 = 0x0007e000
+	l.and	r27, r27, r23
+	l.srli	r27, r27, 13		# r27 = EA[18:13] = set no.
+
+	l.ori	r29, r25, 0x0001	# set valid bit
+	l.mtspr	r27, r29, 0x0a00	# ->match[set no.]
+	l.ori	r29, r25, 0x03c0	# set all permissions
+	l.mtspr	r27, r29, 0x0a80	# ->trans[set no.]
+
+	l.rfe				# return from exception
+  \end{lstlisting}
+  \caption{The Reset and DTLB Miss exception handlers}
+  \label{fig:exh}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language={[x86masm]Assembler}]
+	# store test value in memory
+	l.movhi	r13, 0xc0d1		#
+	l.ori	r13, r13, 0xf1ed	# r13 = 0xcod1f1ed
+	l.ori	r15, r0, 0x4444		# r15 = 0x4444
+	
+	l.sw	0(r15), r13
+
+	# activate mmu
+	l.mfspr	r13, r0, 0x0011		# r13 <- sr
+	l.ori	r13, r13, 0x20		# enable bit 5 (dmmu)
+	l.mtspr	r0, r13, 0x0011		# r13 -> sr
+	
+	# try to load memory location
+	l.lwz	r15, 0(r15)
+	\end{lstlisting}
+  \caption{Main function of first test program}
+  \label{fig:mn1}
+\end{figure}
+
+\subsection{After Hardware Modification}
+The second program was written after the hardware modifications detailed in Section~\ref{sec:har}. In addition to the old exception handlers, which remain unchanged, the Page Fault exception handler now writes a distinctive value to a register and loops indefinitely. In this way it is obvious when a page fault occurs.
+
+The main program stores a test value to memory as before, then sets the appropriate bit in one the new registers to mark the whole cache line as invalid. It then activates the DMMU and attempts to access the memory location, which should trigger a page fault.
+
+The code is given in Figure~\ref{fig:mn2}. As detailed in Section~\ref{sec:har}, the register index is given by bits 18 to 10 of the EA, and the bit index by bits 9 to 5.
+
+\begin{figure}[t]
+  \centering
+  \begin{lstlisting}[language={[x86masm]Assembler}]
+	# store test value in memory
+	l.movhi	r13, 0xc0d1		#
+	l.ori	r13, r13, 0xf1ed	# r13 = 0xcod1f1ed
+	l.ori	r15, r0, 0x4444		# r15 = 0x4444
+	
+	l.sw	0(r15), r13
+	
+	# mark cache line as invalid in dmmu
+	l.ori	r19, r0, 1
+	l.andi	r17, r15, 0x1f		# r17 = bit no = EA[9:5]
+	l.sll	r19, r19, r17		# r19 = one-hot(r17)
+
+	l.movhi r17, 0x0007
+	l.ori	r17, r17, 0xfb00
+	l.and	r17, r15, r17
+	l.srli	r17, r17, 10		# r17 = reg no = EA[18:10]
+
+	l.mfspr	r21, r17, 0x0e00
+	l.or	r21, r19, r21
+	l.sw	4(r15), r21
+	l.mtspr	r17, r21, 0x0e00	# set prot reg
+
+	# activate mmu
+	l.mfspr	r13, r0, 0x0011		# r13 <- sr
+	l.ori	r13, r13, 0x20		# enable bit 5 (dmmu)
+	l.mtspr	r0, r13, 0x0011		# r13 -> sr
+	
+	# try to load memory location
+	l.lwz	r15, 0(r15)
+	\end{lstlisting}
+  \caption{Main function of second test program}
+  \label{fig:mn2}
+\end{figure}

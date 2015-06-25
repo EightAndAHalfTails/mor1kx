@@ -1,0 +1,126 @@
+\chapter{Results}
+\label{cha:results}
+This chapter gives a summary of what was achieved during the project and an analysis of the new hardware, including its impact on area and frequency, followed by some closing remarks.
+
+\section{Summary of Functionality Added}
+The work done in this project modified the Data Memory Management Unit (DMMU) of the OpenRISC soft processor, specifically the \texttt{mor1kx} implementation.
+512 extra 32-bit registers were added to allow for invalidation of individual 32B cache blocks in the virtual memory. This is an improvement over the original system, which only allows for invalidation of entire 8kB pages.
+
+The software running on the processor is then able to invalidate a cache block in virtual memory by setting one of the bits in these registers, the index of which is based on the set number of the page in and the cache block number within the page.
+Thereafter, when an invalid cache block is accessed, the hardware automatically signals a page fault, dropping the processor into the exception handler. From here, control can potentially be given to the operating system to avoid a buffer overflow, or terminate the offending process.
+
+\section{Hardware Impact}
+Figures \ref{fig:fit_before} and \ref{fig:fit_after} depict the output from Quartus's Fitter stage. It is interesting to note that the total number of Logic Elements (LEs) used has decreased slightly from 11,313 to 10,855, which corresponds to about 4\%. In addition, the total number of registers has decreased from 6,248 to 5,472, a 12\% drop. This is in spite of the fact that only extra signals have been added, and nothing has been removed.
+
+It's possible this drop is indicative of an error introduced in the new design: extra hardware could unintentionally short-circuit existing logic. However, the logic added was rather simple; a more likely explanation is this: The DMMU is often on the critical path of the CPU, meaning added logic could violate timing constraints. In addition, fitting is hard; Quartus's fitting algorithm is lazy, meaning it stops optimising once it passes the timing requirements. The added logic to the DMMU could therefore have caused the Fitter to redouble its optimisation efforts, resulting in a smaller design overall.
+
+The other notable change is that the total memory bits used has increased from 46,080 to 64,264, an increase of 16,384, or nearly 40\%. This is exactly as expected, since it corresponds to the 512 extra 32-bit registers added.
+
+Figures \ref{fig:sta_before} and \ref{fig:sta_after} depict the output from Quartus's Static Timing Analysis (STA) stage. \verb|clk[0]| is the SDRAM clock and \verb|clk[1]| is the Wishbone bus clock, both based off the input clock signal from the board.
+
+The STA shows that the SDRAM has sped up 4\% and the Wishbone bus has slowed down by 6\%. As before, these results could be attributed to extra optimisation, so it is difficult to pinpoint the exact effect of the added logic on frequency, but at the very least it is not excessive.
+
+\begin{figure}[p]
+  \centering
+  \footnotesize
+  \begin{verbatim}
++--------------------------------------------------------------------------------------+
+; Fitter Summary                                                                       ;
++------------------------------------+-------------------------------------------------+
+; Fitter Status                      ; Successful - Thu Jun 18 16:18:53 2015           ;
+; Quartus II 32-bit Version          ; 13.0.1 Build 232 06/12/2013 SP 1 SJ Web Edition ;
+; Revision Name                      ; de2                                             ;
+; Top-level Entity Name              ; orpsoc_top                                      ;
+; Family                             ; Cyclone II                                      ;
+; Device                             ; EP2C35F672C6                                    ;
+; Timing Models                      ; Final                                           ;
+; Total logic elements               ; 11,313 / 33,216 ( 34 % )                        ;
+;     Total combinational functions  ; 9,401 / 33,216 ( 28 % )                         ;
+;     Dedicated logic registers      ; 6,248 / 33,216 ( 19 % )                         ;
+; Total registers                    ; 6248                                            ;
+; Total pins                         ; 60 / 475 ( 13 % )                               ;
+; Total virtual pins                 ; 0                                               ;
+; Total memory bits                  ; 46,080 / 483,840 ( 10 % )                       ;
+; Embedded Multiplier 9-bit elements ; 6 / 70 ( 9 % )                                  ;
+; Total PLLs                         ; 1 / 4 ( 25 % )                                  ;
++------------------------------------+-------------------------------------------------+
+  \end{verbatim}
+  \caption{Fitter Summary for the base mor1kx provided by OpenRISC}
+  \label{fig:fit_before}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \footnotesize
+  \begin{verbatim}
++--------------------------------------------------------------------------------+
+; Slow Model Fmax Summary                                                        ;
++------------+-----------------+------------------------------------------+------+
+; Fmax       ; Restricted Fmax ; Clock Name                               ; Note ;
++------------+-----------------+------------------------------------------+------+
+; 56.54 MHz  ; 56.54 MHz       ; clkgen0|pll0|altpll_component|pll|clk[1] ;      ;
+; 119.65 MHz ; 119.65 MHz      ; clkgen0|pll0|altpll_component|pll|clk[0] ;      ;
++------------+-----------------+------------------------------------------+------+
+  \end{verbatim}
+  \caption{Static Timing Analysis for the base mor1kx provided by OpenRISC}
+  \label{fig:sta_before}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \footnotesize
+  \begin{verbatim}
++--------------------------------------------------------------------------------------+
+; Fitter Summary                                                                       ;
++------------------------------------+-------------------------------------------------+
+; Fitter Status                      ; Successful - Thu Jun 18 16:43:41 2015           ;
+; Quartus II 32-bit Version          ; 13.0.1 Build 232 06/12/2013 SP 1 SJ Web Edition ;
+; Revision Name                      ; de2                                             ;
+; Top-level Entity Name              ; orpsoc_top                                      ;
+; Family                             ; Cyclone II                                      ;
+; Device                             ; EP2C35F672C6                                    ;
+; Timing Models                      ; Final                                           ;
+; Total logic elements               ; 10,855 / 33,216 ( 33 % )                        ;
+;     Total combinational functions  ; 9,440 / 33,216 ( 28 % )                         ;
+;     Dedicated logic registers      ; 5,472 / 33,216 ( 16 % )                         ;
+; Total registers                    ; 5472                                            ;
+; Total pins                         ; 60 / 475 ( 13 % )                               ;
+; Total virtual pins                 ; 0                                               ;
+; Total memory bits                  ; 62,464 / 483,840 ( 13 % )                       ;
+; Embedded Multiplier 9-bit elements ; 6 / 70 ( 9 % )                                  ;
+; Total PLLs                         ; 1 / 4 ( 25 % )                                  ;
++------------------------------------+-------------------------------------------------+
+  \end{verbatim}
+  \caption{Fitter Summary for the modified mor1kx with added registers and logic}
+  \label{fig:fit_after}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \footnotesize
+  \begin{verbatim}
++--------------------------------------------------------------------------------+
+; Slow Model Fmax Summary                                                        ;
++------------+-----------------+------------------------------------------+------+
+; Fmax       ; Restricted Fmax ; Clock Name                               ; Note ;
++------------+-----------------+------------------------------------------+------+
+; 53.3 MHz   ; 53.3 MHz        ; clkgen0|pll0|altpll_component|pll|clk[1] ;      ;
+; 124.72 MHz ; 124.72 MHz      ; clkgen0|pll0|altpll_component|pll|clk[0] ;      ;
++------------+-----------------+------------------------------------------+------+
+  \end{verbatim}
+  \caption{Static Timing Analysis for the modified mor1kx with added registers and logic}
+  \label{fig:sta_after}
+\end{figure}
+
+\section{Closing Remarks}
+In the end the aims of the project were implemented. It is unfortunate that the more modern SoCKit with its Cyclone V FPGA could not be used, and that attempts to do so detracted from the final acheivements of the project. To sum up, the works created by this project are:
+\begin{itemize}
+\item A modified DMMU to be used in the mor1kx processor,
+\item An assembly program that uses the new hardware.
+\end{itemize}
+
+This program also served to test for the hardware. Ideally, though, a test suite would be created to ensure that functionality is otherwise unchanged from before.
+
+There is much more work that could follow from this project. First of all more testing is required as stated. In addition more work is needed to ascertain the benefits of the hardware-based approach over traditional ones.
+
+Further related work could also include a modification to the Linux kernel that would allow a distribution running on the mor1kx processor to use the added hardware for memory management.

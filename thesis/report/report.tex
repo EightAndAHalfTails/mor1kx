@@ -1,0 +1,306 @@
+% !TEX TS-program = pdflatex
+% !TEX encoding = UTF-8 Unicode
+
+% This is a simple template for a LaTeX document using the "article" class.
+% See "book", "report", "letter" for other types of document.
+
+\documentclass[11pt,a4paper,twoside,openany]{report}
+
+% Nicer fonts
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+%%% Examples of Article customizations
+% These packages are optional, depending whether you want the features they provide.
+% See the LaTeX Companion or other references for full information.
+
+%%% PAGE DIMENSIONS
+\usepackage[inner=2cm,outer=4cm]{geometry}
+
+\usepackage{graphicx} % support the \includegraphics command and options
+
+% \usepackage[parfill]{parskip} % Activate to begin paragraphs with an empty line rather than an indent
+
+%%% PACKAGES
+\usepackage{booktabs} % for much better looking tables
+\usepackage{array} % for better arrays (eg matrices) in maths
+\usepackage{paralist} % very flexible & customisable lists (eg. enumerate/itemize, etc.)
+\usepackage{verbatim} % adds environment for commenting out blocks of text & for better verbatim
+\usepackage{subfig} % make it possible to include more than one captioned figure/table in a single float
+% These packages are all incorporated in the memoir class to one degree or another...
+
+%%% HEADERS & FOOTERS
+\usepackage{fancyhdr} % This should be set AFTER setting up the page geometry
+\pagestyle{fancy} % options: empty , plain , fancy
+\renewcommand{\headrulewidth}{0pt} % customise the layout...
+\lhead{}\chead{}\rhead{}
+\lfoot{}\cfoot{\thepage}\rfoot{}
+
+%%% ToC (table of contents) APPEARANCE
+\usepackage[nottoc,notlof,notlot]{tocbibind} % Put the bibliography in the ToC
+\usepackage[titles,subfigure]{tocloft} % Alter the style of the Table of Contents
+\renewcommand{\cftsecfont}{\rmfamily\mdseries\upshape}
+\renewcommand{\cftsecpagefont}{\rmfamily\mdseries\upshape} % No bold!
+
+% Hyperlinks, URLs etc.
+\usepackage{hyperref}
+\usepackage{url}
+\hypersetup{
+    colorlinks=true,
+    citecolor=black,
+    urlcolor=black,
+    linkcolor=black,
+    pagecolor=black,
+    anchorcolor=black
+}
+
+% Listings
+%\usepackage{chngcntr} % Renumbering done further down because the
+                      % counter is only available after the document
+                      % begins, for some reason.
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{color}
+
+\definecolor{LightGray}{rgb}{0.9,0.9,0.9}
+
+\lstset{basicstyle=\footnotesize\ttfamily}
+\lstset{showstringspaces=false}
+\lstset{numbers=none}
+\lstset{keywordstyle=\color{MidnightBlue}\bfseries}
+\lstset{commentstyle=\color{JungleGreen}}
+\lstset{identifierstyle=\color{OliveGreen}}
+\lstset{stringstyle=\color{Red}}
+\lstset{backgroundcolor=\color{LightGray}}
+\lstset{breaklines=true}
+\lstset{captionpos=b}
+
+%\makeatletter
+%\renewcommand\l@lstlisting[2]{\@dottedtocline{1}{1.5em}{2.75em}{#1}{#2}}
+%\makeatother
+
+\usepackage{enumitem}
+
+%%% END Article customizations
+
+%%% The "real" document content comes below...
+
+\title{%
+{\normalsize\scshape Imperial College London}\\
+{\normalsize\scshape Telecom Paristech}\\
+\vspace{2em}
+\hrule
+\vspace{1em}
+{\huge\bfseries Hardware-based Buffer Overflow Protection}\\
+\vspace{1em}
+\hrule
+\vspace{1em}
+{\small Submitted for part completion of MEng Electronic and Information Engineering}
+}
+\author{%
+Author: Jake Humphrey\\
+Supervisor: Guillaume Duc
+}
+\date{}
+
+\begin{document}
+
+%\counterwithin{lstlisting}{section}
+
+\pagestyle{empty}
+
+\maketitle
+
+\cleardoublepage
+\begin{abstract}
+Implementing security features in hardware can free the software programmer from worrying about them, leading in turn to simplified code. This can be especially useful when programming in low-level languages such as C, which provide minimal built-in protection.
+
+This project report details the work undertaken modifying the Memory Management Unit (MMU) of an existing processor to implement protection against buffer overflow attacks, then produces some assembly code showing how firmware or an operating system kernel would make use of the protection. Finally, it analyses the effect of the added protection on hardware area and clock frequency.
+
+\end{abstract}
+
+\cleardoublepage
+\pagestyle{plain}
+\pagenumbering{roman}
+\setcounter{page}{1}
+\tableofcontents
+
+\newpage
+\cleardoublepage
+\pagenumbering{arabic}
+
+\include{01-introduction}
+\include{02-research}
+\include{03-implementation}
+\include{04-results}
+
+\begin{thebibliography}{99}
+
+\bibitem{heartbleed}
+  Heartbleed Website\\
+  \url{heartbleed.com}\\
+  Fetched 2015-06-15.
+  
+\bibitem{sockit}
+  SoCKit page on Distributor site\\
+  \url{parts.arrow.com/item/detail/arrow-development-tools/sockit}\\
+  Fetched 2015-06-16.
+
+\bibitem{de2}
+	DE2 page on Altera site\\
+  \url{wl.altera.com/education/univ/materials/boards/de2/unv-de2-board.html}\\
+  Fetched 2015-06-17.
+  
+\bibitem{fusesoc}
+  FuseSoC repository on Github\\
+  \url{github.com/olofk/fusesoc}\\
+  Fetched 2015-06-16.
+  
+\bibitem{wb_dec}
+	OrpSoC-cores repository on Github\\
+	\url{github.com/openrisc/orpsoc-cores/blob/14fb5aa0d96aea7e2594d0bb42195c9477dd33f8/cores/wb_avalon_bridge/verilog/avalon_to_wb_bridge.v} \\
+	Fetched 2015-06-16.
+	  
+\bibitem{wb_inst}
+	OrpSoC-cores repository on Github\\
+	\url{https://github.com/openrisc/orpsoc-cores/blob/70b775e2ec2e53d15e3f595336e05053ba81f139/systems/sockit/rtl/verilog/orpsoc_top.v#L587} \\
+	Fetched 2015-06-16.
+	
+\bibitem{or1k-linux}
+	Linux info on the OpenCores website\\
+	\url{opencores.org/or1k/Linux}\\
+	Fetched 2015-06-16.
+	
+\bibitem{or1k-openocd}
+	Debugging info on the OpenCores website\\
+	\url{opencores.org/or1k/Debugging_physical_targets_(FPGA/ASIC)}\\
+	Fetched 2015-06-16.
+	
+\bibitem{openocd-sockit}
+	Discussion of bug with OpenOCD and the SoCKit\\
+	\url{comments.gmane.org/gmane.comp.debugging.openocd.devel/26474}\\
+	Fetched 2015-06-16.
+	
+\bibitem{openocd-fix}
+	OpenOCD patch on Github\\
+	\url{github.com/fjullien/openOCD/commit/0c834568e020ed3b61a055086d9d142f03860e0f}\\
+	Fetched 2015-06-16.
+
+\bibitem{wiki-sp}
+	Soft Processors on Wikipedia\\
+	\url{en.wikipedia.org/wiki/Soft_microprocessor}\\
+	Fetched 2015-06-19.
+
+\bibitem{or1k-home}
+	Home page of or1k\\
+	\url{http://opencores.org/or1k/Main_Page}\\
+	Fetched 2015-06-19.
+
+\bibitem{leon-home}
+	Gaisler website\\
+	\url{gaisler.com}\\
+	Fetched 2015-06-19.
+
+\bibitem{lm32-home}
+	LatticeSemi IP home page\\
+	\url{www.latticesemi.com/Products/DesignSoftwareAndIP.aspx}\\
+	Fetched 2015-06-19.
+
+\bibitem{mb-home}
+	Microblaze home page\\
+	\url{www.xilinx.com/tools/microblaze.htm}\\
+	Fetched 2015-06-19.
+
+\bibitem{nios-home}
+	Nios II home page\\
+	\url{www.altera.com/products/processors/overview.html}\\
+	Fetched 2015-06-19.
+
+\bibitem{m1-home}
+	Cortex M1 home page\\
+	\url{www.arm.com/products/processors/cortex-m/cortex-m1.php}\\
+	Fetched 2015-06-19.
+	
+\bibitem{or1k}
+	OpenRISC 1000 Architecture Manual\\
+	\url{github.com/openrisc/doc/blob/master/openrisc-arch-1.1-rev0.pdf?raw=true}\\
+	Fetched 2015-06-19.
+
+\bibitem{or1200}
+	Official or1200 repository on Github\\
+	\url{github.com/openrisc/or1200}\\
+	Fetched 2015-06-19.
+
+\bibitem{mor1kx}
+	Official mor1kx repository on Github\\
+	\url{github.com/openrisc/mor1kx}\\
+	Fetched 2015-06-17.
+	
+\bibitem{or1k-elf-gcc}
+	OpenRISC GNU tool chain\\
+	\url{opencores.org/or1k/OpenRISC_GNU_tool_chain#Tools}\\
+	Fetched 2015-06-19.
+
+\bibitem{openrisc}
+	OpenRISC project overview\\
+	\url{openrisc.github.io}\\
+	Fetched 2015-06-19.
+
+\bibitem{gaisler}
+	Aeroflex Gaisler's list of available processors\\
+	\url{www.gaisler.com/index.php/products/processors}\\
+	Fetched 2015-06-19.
+
+\bibitem{leon2}
+	LEON2 source code on Github\\
+	\url{github.com/Galland/LEON2}\\
+	Fetched 2015-06-19.
+
+\bibitem{grlib}
+	GRLIB library on Gaisler website\\
+	\url{www.gaisler.com/index.php/products/ipcores/soclibrary}\\
+	Fetched 2015-06-19.
+
+\bibitem{leon3}
+	LEON3 Documentation\\
+	\url{www.gaisler.com/doc/leon3_product_sheet.pdf}\\
+	Fetched 2015-06-19.
+
+\bibitem{leon4}
+	LEON4 Documentation\\
+	\url{www.gaisler.com/doc/LEON4_32-bit_processor_core.pdf}\\
+	Fetched 2015-06-19.
+
+\bibitem{bcc}
+	BCC SPARCV8 cross-compiler\\
+	\url{www.gaisler.com/index.php/products?option=com_content&task=view&id=147}\\
+	Fetched 2015-06-19.
+
+\bibitem{lm32-isa}
+	LatticeMico32 ISA documentation\\
+	\url{sourceware.org/cgen/gen-doc/lm32-insn.html}\\
+	Fetched 2015-06-19.
+
+\bibitem{lm32-doc}
+	LatticeMico32 documentation\\
+	\url{www.latticesemi.com/en/Products/DesignSoftwareAndIP/IntellectualProperty/IPCore/IPCores02/LatticeMico32.aspx#_B63AC1B3E7604B0DA4F80789A0B69A31}\\
+	Fetched 2015-06-19.
+
+\bibitem{mb-clone}
+	List of Microblaze clones on Wikipedia\\
+	\url{en.wikipedia.org/wiki/MicroBlaze#Clones}\\
+	Fetched 2015-06-19.
+
+\bibitem{mb-doc}
+	Microblaze documentation\\
+	\url{xilinx.com/support/documentation/sw_manuals/xilinx11/mb_ref_guide.pdf}\\
+	Fetched 2015-06-19.
+
+\bibitem{nios-doc}
+	Nios II documentation\\
+	\url{https://www.altera.com/support/literature/lit-nio2.html}\\
+	Fetched 2015-06-19.
+
+
+\end{thebibliography}
+
+\end{document}

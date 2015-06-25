@@ -1,0 +1,109 @@
+\chapter{Research}
+\label{cha:res}
+
+To carry out the project aims, a \textbf{Soft Processor}, a processor which is to some extent configurable, is needed. Specifically we need to be able to directly modify the MMU code. This chapter provides a comparison of the various Soft Processors available.
+
+\section{Comparison of Soft Processors}
+The following metrics will be taken into account:
+\begin{itemize}
+\item Bus Used
+\item Architecture, including Instruction Set Architecture (ISA)
+\item Cache
+\item Memory Management Unit (MMU)
+\item Protection/User Levels
+\item License
+\item Documentation
+\item Toolchain
+\item Maturity
+\end{itemize}
+
+Basic information was taken from the Wikipedia page on soft processors.\cite{wiki-sp} More detailed information unless otherwise cited was taken from the relevant company's website.\cite{or1k-home}\cite{leon-home}\cite{lm32-home}\cite{mb-home}\cite{nios-home}\cite{m1-home}
+
+\subsection{OpenRISC}
+\begin{description}[style=nextline]
+\item[Developer] OpenCores
+\item[Bus Used] OpenRISC uses Wishbone, an open source specification by OpenCores.
+\item[Architecture] 32/64-bit MIPS-like.
+\item[Cache] 1--64kB for Instructions and Data each.
+\item[MMU] Virtual Memory support. Translation Lookaside Buffer (TLB) with page size 8kB and 16--256 entries.
+\item[User Levels] User/Supervisor Mode.
+\item[License] There are two main open source implementations available. A Verilog implementation, OpenRISC 1200, is released under LGPL. Another Verilog implementation, mor1kx, is available under a weak copy-left licence created specifically for it, the OHDL.
+\item[Documentation] There exists a document detailing the architecture specification.\cite{or1k} Documentation for both implementations are also available at their respective Github pages.\cite{or1200}\cite{mor1kx}
+\item[Toolchain] A Compiler (based on gcc) and Debugger (based on gdb) are available.\cite{or1k-elf-gcc}
+\item[Maturity] The OpenRISC 1000 specification has been under development since 2001. Version 1.0 was released in 2012, and Version 1.1 in 2014. The OpenRISC 1200 implementation is stable but not in active development, and is the widely used version.\cite{openrisc} Mor1kx is still in active development, but is stated to be more sophisticated.
+\end{description}
+
+\subsection{LEON2/3/4}
+\begin{description}[style=nextline]
+\item[Developer] Aeroflex Gaisler
+\item[Bus Used] AMBA2
+\item[Architecture] 32-bit. ISA based on SPARC-V8
+\item[Cache] LEON2: Instruction and Data caches. Set-associative with 1--4 sets and 1--64kB/set. LRR or LRU replacement. LEON3/4: 1--4 sets, 1--256 kB/set. Random, LRR or LRU replacement. LEON4 includes an optional L2 cache. 256-bit internal, 1-4 sets, 16kB--8MB.
+\item[MMU] SPARC Reference MMU (SRMMU) with configurable TLB
+\item[User Levels] The User and Supervisor modes of SPARC.
+\item[License] Gaisler state on their website that LEON2 is available from Atmel (AT697 and AT7913)\cite{gaisler}, but the VHDL source code appears to be on Github.\cite{leon2} LEON3 is available under GPL as part of the GRLIB library.\cite{grlib} LEON4 is only available under a commercial license from Gaisler.
+\item[Documentation] LEON3\cite{leon3} and LEON4\cite{leon4} have documentation.
+\item[Toolchain] Being SPARC V8 conformant, compilers and kernels for SPARC V8 can be used with LEON processors. Cross compiler BCC.\cite{bcc} gdb can be used for debugging.
+\item[Maturity] No information found.
+\end{description}
+
+\subsection{Lm32}
+\begin{description}[style=nextline]
+\item[Developer] Lattice
+\item[Bus Used] Wishbone
+\item[Architecture] 32-bit. ISA documentation is available.\cite{lm32-isa}
+\item[Cache] Configurable between no cache, 8kB I-cache, and 8kB I-cache and 8kB D-cache.
+\item[MMU] None.
+\item[User Levels] No separate modes.
+\item[License] LatticeMico32 is licensed under a free (IP) core license.
+\item[Documentation] Documentation is available from the LatticeSemi website, but registration is required.\cite{lm32-doc}
+\item[Toolchain] GCC supports the LM32 since version 4.5.0, and Binutils since 2.19. gdb and Newlib are also supported.
+\item[Maturity] Introduced in 2006.
+\end{description}
+
+\subsection{Microblaze}
+\begin{description}[style=nextline]
+\item[Developer] Xilinx
+\item[Bus Used] Customisable between CoreConnect PLB, OPB, FSL, LMB, AXI4.
+\item[Architecture] In terms of its instruction set architecture, MicroBlaze is very similar to the RISC-based DLX architecture, which in turn is based upon the MIPS architecture.
+\item[Cache] 2kB--64kB direct mapped write-through or write-back.
+\item[MMU] Optional. 4GB virtual memory, supports page sizes of 1kB, 4kB, 16kB, 64kB, 256kB, 1MB, 4MB, and 16MB. Page-replacement strategy controlled by software.
+\item[User Levels] User and privileged modes.
+\item[License] Proprietary. Available from Xilinx along with the EDK (Embedded Development Kit). A smaller, less functional version with limited target devices is available for free, but the full version costs \$3000--\$6000, depending on the license type. The license also restricts the use of Microblaze to Xilinx FPGAs. LGPL clones also exist in Verilog, VHDL, or MyHDL.\cite{mb-clone}
+\item[Documentation] Rather comprehensive reference manual available.\cite{mb-doc}
+\item[Toolchain] Xilinx provides the Vivado design suite, including an IDE, SDK, Simulator, Analyser, and Synthesiser. Support for Microblaze also exists in gcc as of version 4.6.
+\item[Maturity] Currently in version 8.50b, under development since 2002.
+\end{description}
+
+\subsection{Nios II}
+\begin{description}[style=nextline]
+\item[Developer] Altera
+\item[Bus Used] Altera's own Avalon bus.
+\item[Architecture] 32-bit RISC architecture, with support for up to 256 custom instructions. 3 different configurations are available: fast (f), standard (s), and economy (e).
+\item[Cache] Nios II/f has separate instruction and data caches of 512B to 64kB, while the Nios II/s has only an instruction cache, and the Nios II/e has none.
+\item[MMU] There is an optional MMU and MPU\footnote{Memory Protection Unit} for the Nios II/f. Default is 16-way set-associative cache, the default size depends on the target FPGA but is either 128 or 256 entries or 4 or 8kB. Replacement strategy is set by the software.
+\item[User Levels] The Nios II supports user and supervisor modes only when the design includes an MMU or MPU.
+\item[License] The License for the Nios II IP core is around \$500. Currently the Altera website has a redirect loop and I am unable to find information on toolchain licenses.
+\item[Documentation] Both Hardware and Software development documentation are available.\cite{nios-doc}
+\item[Toolchain] Qsys and Quartus for hardware, Altera's Embedded Design Suite for software, based on Eclipse and the GNU toolchain.
+\item[Maturity] In development since 2004, currently in version 13.1, released in 2013.
+\end{description}
+
+\subsection{Cortex-M1}
+\begin{description}[style=nextline]
+\item[Developer] ARM
+\item[Bus Used] ARM Corelink Interconnect
+\item[Architecture] Three-stage 32-bit RISC, ARMv6M ISA.
+\item[Cache] No cache, TCM only, up to 1MB each.
+\item[MMU] None.
+\item[User Levels] None.
+\item[License] Proprietary, must contact sales team for cost.
+\item[Documentation] No reference manual specifically for the M1. See the ``resources'' tab on the Cortex M1 home page for more information.\cite{m1-home}
+\item[Toolchain] An extension of Altera's Quartus II. Supported by the ARM microprocessor development kit for software development.
+\item[Maturity] No information found.
+\end{description}
+
+\section{Choice and Justification}
+As well as having to contain an MMU, another requirement for the project is that the processor have open code for it. Just having a customisable size is not enough, since the aims include adding entirely new registers and logic to the MMU.
+
+These restrictions eliminate all the above save OpenRISC and the LEON2/3 processors. The OpenRISC was chosen for the project because its architecture is closer to the MIPS and ARM architectures commonly in use today, while the SPARC architecture of the LEON processors would be more difficult to learn to program for.
