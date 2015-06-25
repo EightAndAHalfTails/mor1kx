@@ -16,7 +16,7 @@ The above solution works for writes, which corrupt the canary value, but would o
 \section{Project Aims}
 One could imagine a system making use of the Memory Management Unit (MMU), whereby a buffer would be placed immediately before a page boundary, and the following page marked as invalid in the MMU. A buffer overflow, whether a read or a write, would then trigger a page fault, which could potentially allow the OS to resolve the situation.
 
-The biggest downside to this method is that it requires an entire virtual memory page be invalidated. On x86 processors, for example, this is 4KiB. It would be nice to have a smaller invalidatable section of memory in the MMU to use for this purpose.
+The biggest downside to this method is that it requires an entire virtual memory page be invalidated (and thus unusable). On x86 processors, for example, this is 4KiB. It would be nice to have a smaller invalidatable section of memory in the MMU to use for this purpose.
 
 This project investigates a method to allow the invalidation of smaller memory sections within the MMU, specifically by adding hardware registers to allow for memory invalidation at the cache block level; in x86 the cache block size is 64B. This allows use of the above protection system without excess wasted memory, however it adds extra silicon in the form of the hardware registers. This tradeoff is also examined during the project.
 
