@@ -4,9 +4,9 @@ This repository contributes to my Master's thesis in Electronic and Information 
 
 ## Notes for markers
 
-The `thesis` directory contains the documentation of this project including initial research and the project report. Also found there is the software written.
+The [thesis](thesis) directory contains the documentation of this project including initial research and the project report. Also found there is the software written.
 
-The other directories in the root of this repo belong to mor1kx, and remain so that the core can still be built from this repository, though the project is centred entirely on the DMMU, which can be found at rtl/verilog/mor1kx_dmmu.v
+The other directories in the root of this repo belong to [mor1kx](https://www.github.com/openrisc/mor1kx), and remain so that the core can still be built from this repository, though the project is centred entirely on the DMMU, which can be found at [rtl/verilog/mor1kx_dmmu.v](rtl/verilog/mor1kx_dmmu.v)
 
 Below follows the original readme for this repo.
 
